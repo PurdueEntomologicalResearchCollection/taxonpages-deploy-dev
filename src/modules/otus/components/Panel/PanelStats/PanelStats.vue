@@ -24,6 +24,12 @@
               Taxa
             </VTableHeaderCell>
             <VTableHeaderCell
+                v-if="showToRank"
+                v-bind:title="tooltipToRank()"
+            >
+              Specimens
+            </VTableHeaderCell>
+            <VTableHeaderCell
               v-if="!hideNames"
               title="Taxon names"
               class="border-l border-base-border"
@@ -43,6 +49,13 @@
               title="OTUs linked to valid protonyms"
               >Total</VTableHeaderCell
             >
+            <VTableHeaderCell
+                v-if="showToRank"
+                v-bind:title="tooltipToRank()"
+                class="border-base-border"
+            >
+              Determined
+            </VTableHeaderCell>
             <VTableHeaderCell
               v-if="!hideNames"
               title="Taxon names"
@@ -65,6 +78,13 @@
           >
             <VTableBodyCell class="capitalize">{{ rank }}</VTableBodyCell>
             <VTableBodyCell v-if="isAdvancedView">{{ taxa }}</VTableBodyCell>
+            <VTableBodyCell
+                v-if="showToRank"
+                v-bind:title="tooltipToRank(rank)"
+                v-title="tooltipToRank(rank)"
+            >
+              {{ toRank(rank) }}
+            </VTableBodyCell>
             <VTableBodyCell v-if="!hideNames" class="border-l border-base-border">
               {{ names.invalid + names.valid }}
             </VTableBodyCell>
@@ -108,6 +128,12 @@ const props = defineProps({
     default: false
   },
 
+  // Show "Determined to Rank" column?
+  showToRank: {
+    type: Boolean,
+    default: false
+  },
+
   hideNames: {
     type: Boolean,
     default: false
@@ -117,6 +143,27 @@ const props = defineProps({
 const store = useOtuStore()
 const isAdvancedView = ref(props.showTaxa)
 const hideNames = ref(props.hideNames)
+const showToRank = ref(props.showToRank)
+
+if (props.showToRank) {
+  store.loadToRank(props.otuId)
+}
+
+const tooltipToRank = (rank) =>
+    rank
+        ? `${toRank(rank)} specimens are determined ${rank.indexOf('speci') >= 0 ? 'fully' : 'only' } to ${rank}.`
+        : "How many specimens are determined only to this rank?"
+
+const toRank = (rank) => {
+  const rankLc = rank.toLowerCase()
+  const data = store.determinedToRank.data
+  if (store.determinedToRank.isLoading) return "..."
+  else if (!data) return "—" // not yet loaded, or failed
+  else {
+    if (rankLc in data) return data[rankLc] ?? 0 // null means 0 in the API response
+    else return "missing"
+  }
+}
 
 const menuOptions = computed(() => [
   {
@@ -126,6 +173,10 @@ const menuOptions = computed(() => [
   {
     label: hideNames.value ? 'Show names' : 'Hide names',
     action: () => (hideNames.value = !hideNames.value)
+  },
+  {
+    label: showToRank.value ? 'Hide to rank' : 'Show to rank',
+    action: () => (showToRank.value = !showToRank.value)
   }
 ])
 </script>
